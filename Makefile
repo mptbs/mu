@@ -28,10 +28,10 @@ pycodestyle:
 	find . \( -name _build -o -name var \) -type d -prune -o -name '*.py' -print0 | $(XARGS) -n 1 pycodestyle --repeat --exclude=build/*,docs/*,mu/contrib*,mu/resources/api.py --ignore=E731,E402
 
 test: clean
-	py.test
+	py.test --verbose
 
 coverage: clean
-	py.test --cov-config .coveragerc --cov-report term-missing --cov=mu tests/
+	py.test --verbose --cov-config .coveragerc --cov-report term-missing --cov=mu tests/
 
 check: clean pycodestyle pyflakes coverage
 
