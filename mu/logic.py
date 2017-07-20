@@ -20,6 +20,7 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 import os
 import os.path
 import sys
+import subprocess
 import io
 import re
 import json
@@ -27,9 +28,13 @@ import logging
 import tempfile
 import platform
 import webbrowser
+from shutil import copyfile
+from time import sleep
 from PyQt5.QtWidgets import QMessageBox
 from PyQt5.QtSerialPort import QSerialPortInfo
 from pyflakes.api import check
+from serial.tools.list_ports import comports as list_serial_ports
+from serial.serialutil import SerialException
 # Currently there is no pycodestyle deb packages, so fallback to old name
 try:  # pragma: no cover
     from pycodestyle import StyleGuide, Checker
@@ -39,6 +44,8 @@ from mu.contrib import uflash, appdirs, microfs
 from mu.contrib.atomicfile import open_atomic
 from mu import __version__
 
+from mu.resources import pyboard
+from mu.resources import files
 
 #: List of supported board USB IDs.  Each board is a tuple of unique USB vendor
 # ID, USB product ID.
@@ -49,6 +56,7 @@ BOARD_IDS = set([
     (0x239A, 0x8014),  # metro m0 PID
     (0x239A, 0x8019),  # circuitplayground m0 PID
     (0x239A, 0x801B),  # feather m0 express PID
+	(0x1366, 0x0105)   # Silicon Labs Thunderboard Sense
 ])
 #: The user's home directory.
 HOME_DIRECTORY = os.path.expanduser('~')
@@ -65,14 +73,16 @@ STYLE_REGEX = re.compile(r'.*:(\d+):(\d+):\s+(.*)')
 #: Regex to match flake8 output.
 FLAKE_REGEX = re.compile(r'.*:(\d+):\s+(.*)')
 #: Regex to match false positive flake errors if microbit.* is expanded.
-EXPAND_FALSE_POSITIVE = re.compile(r"^'microbit\.(\w+)' imported but unused$")
+# EXPAND_FALSE_POSITIVE = re.compile(r"^'microbit\.(\w+)' imported but unused$")
+EXPAND_FALSE_POSITIVE = re.compile(r"^'tbsense\.(\w+)' imported but unused$")
 #: The text to which "from microbit import *" should be expanded.
-EXPANDED_IMPORT = ("from microbit import pin15, pin2, pin0, pin1, "
-                   " pin3, pin6, pin4, i2c, pin5, pin7, pin8, Image, "
-                   "pin9, pin14, pin16, reset, pin19, temperature, "
-                   "sleep, pin20, button_a, button_b, running_time, "
-                   "accelerometer, display, uart, spi, panic, pin13, "
-                   "pin12, pin11, pin10, compass")
+# EXPANDED_IMPORT = ("from microbit import pin15, pin2, pin0, pin1, "
+                   # " pin3, pin6, pin4, i2c, pin5, pin7, pin8, Image, "
+                   # "pin9, pin14, pin16, reset, pin19, temperature, "
+                   # "sleep, pin20, button_a, button_b, running_time, "
+                   # "accelerometer, display, uart, spi, panic, pin13, "
+                   # "pin12, pin11, pin10, compass")
+EXPANDED_IMPORT = ("from tbsense import LED, RGBLED, Pressure, UV, RHTemp, Hall, IMU, AirQuality, Mic, reset_module, reinit_peripherals, ms, ms_elapsed, delay")
 
 
 logger = logging.getLogger(__name__)
@@ -88,7 +98,7 @@ def find_microbit():
         pid = port.productIdentifier()
         vid = port.vendorIdentifier()
         # Look for the port VID & PID in the list of known board IDs.
-        if (vid, pid) in BOARD_IDS:
+        if vid == 0x1366 and ("tty" in port.portName() or "COM" in port.portName()):
             port_name = port.portName()
             logger.info('Found micro:bit with portName: {}'.format(port_name))
             return port_name
@@ -196,11 +206,11 @@ def check_flake(filename, code):
 
     https://github.com/PyCQA/pyflakes
     """
-    import_all = "from microbit import *" in code
+    import_all = "from tbsense import *" in code
     if import_all:
         # Massage code so "from microbit import *" is expanded so the symbols
         # are known to flake.
-        code = code.replace("from microbit import *", EXPANDED_IMPORT)
+        code = code.replace("from tbsense import *", EXPANDED_IMPORT)
     reporter = MuFlakeCodeReporter()
     check(code, filename, reporter)
     feedback = {}
@@ -469,6 +479,56 @@ class Editor:
                            " the device remains unfound.")
             self._view.show_message(message, information)
 
+
+    def run(self):
+
+        tab = self._view.current_tab
+        if tab.path is None:
+            # Unsaved file.
+            tab.path = self._view.get_save_path(get_workspace_dir())
+        # Save program
+        self.save()
+        
+        portNum = find_microbit()
+
+        if os.name == 'posix':
+            # If we're on Linux or OSX reference the port is like this...
+            port = "/dev/{}".format(portNum)
+        elif os.name == 'nt':
+            # On Windows simply return the port (e.g. COM0).
+            port = portNum
+        else:
+            # No idea how to deal with other OS's so fail.
+            logger.debug('OS not supported.')
+            raise NotImplementedError('OS not supported.')
+
+        try:
+            if self.repl:
+                logger.debug('Temporarily disconnecting REPL')
+                self._view.disconnect_repl(self.repl)
+
+            # Call AMPY
+            board = pyboard.Pyboard(port)
+            board_files = files.Files(board)
+            with open(tab.path, 'rb') as infile:
+                board_files.put("main.py", infile.read())
+            board_files.run(tab.path, False)
+            board.close()
+            
+            if self.repl:
+                logger.debug('Reconnecting REPL')
+                self._view.connect_repl(self.repl)
+        except (SerialException, IOError, pyboard.PyboardError) as e:
+            message = 'Could not find an attached board.'
+            information = ("Please make sure the device is plugged into this"
+                           " computer.\n\nThe device must have MicroPython"
+                           " flashed onto it.\n\n"
+                           "Finally, press the device's reset button and wait"
+                           " a few seconds before trying again.")
+            information = str(e)
+            self._view.show_message(message, information)
+
+
     def add_fs(self):
         """
         If the REPL is not active, add the file system navigator to the UI.
@@ -542,7 +602,7 @@ class Editor:
             except Exception as ex:
                 logger.error(ex)
         else:
-            message = 'Could not find an attached BBC micro:bit.'
+            message = 'Could not find an attached board.'
             information = ("Please make sure the device is plugged into this"
                            " computer.\n\nThe device must have MicroPython"
                            " flashed onto it before the REPL will work.\n\n"

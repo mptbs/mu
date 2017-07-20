@@ -27,7 +27,7 @@ from mu import __version__
 from mu.logic import Editor, LOG_FILE, LOG_DIR
 from mu.interface import Window
 from mu.resources import load_pixmap
-from mu.resources.api import MICROPYTHON_APIS
+from mu.resources.api import SUPPORTED_APIS
 
 
 def setup_logging():
@@ -70,7 +70,7 @@ def run():
     editor = Editor(view=editor_window)
     # Setup the window.
     editor_window.closeEvent = editor.quit
-    editor_window.setup(editor.theme, MICROPYTHON_APIS)
+    editor_window.setup(editor.theme, SUPPORTED_APIS)
     # capture the filename passed by the os, if there was one
     passed_filename = sys.argv[1] if len(sys.argv) > 1 else None
     editor.restore_session(passed_filename)
@@ -79,8 +79,8 @@ def run():
     button_bar.connect("new", editor.new, "Ctrl+N")
     button_bar.connect("load", editor.load, "Ctrl+O")
     button_bar.connect("save", editor.save, "Ctrl+S")
-    button_bar.connect("flash", editor.flash)
-    button_bar.connect("files", editor.toggle_fs)
+    button_bar.connect("flash", editor.run)
+    # button_bar.connect("files", editor.toggle_fs)
     button_bar.connect("repl", editor.toggle_repl)
     button_bar.connect("zoom-in", editor.zoom_in)
     button_bar.connect("zoom-out", editor.zoom_out)

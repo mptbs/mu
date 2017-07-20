@@ -543,11 +543,11 @@ class ButtonBar(QToolBar):
                        tool_text="Save the current MicroPython script.")
         self.addSeparator()
         self.addAction(name="flash",
-                       tool_text="Flash your code onto the micro:bit.")
-        self.addAction(name="files",
-                       tool_text="Access the file system on the micro:bit.")
+                       tool_text="Flash your code onto the board.")
+        # self.addAction(name="files",
+                       # tool_text="Access the file system on the micro:bit.")
         self.addAction(name="repl",
-                       tool_text="Use the REPL to live code the micro:bit.")
+                       tool_text="Use the REPL to live code.")
         self.addSeparator()
         self.addAction(name="zoom-in",
                        tool_text="Zoom in (to make the text bigger).")
@@ -772,6 +772,18 @@ class Window(QStackedWidget):
         self.repl.setFocus()
         self.connect_zoom(self.repl)
 
+    def connect_repl(self, repl):
+        """
+        Opens the serial port
+        """
+        self.repl.connect()
+
+    def disconnect_repl(self, repl):
+        """
+        Closes the serial port
+        """
+        self.repl.disconnect()
+
     def remove_filesystem(self):
         """
         Removes the file system pane from the application.
@@ -967,7 +979,7 @@ class REPLPane(QTextEdit):
             # clear the text
             self.clear()
             # Send a Control-C
-            self.serial.write(b'\x03')
+            # self.serial.write(b'\x03')
         else:
             raise IOError("Cannot connect to device on port {}".format(port))
         self.set_theme(theme)
@@ -1128,6 +1140,16 @@ class REPLPane(QTextEdit):
         Clears the text of the REPL.
         """
         self.setText('')
+
+    def connect(self):
+        if self.serial.open(QIODevice.ReadWrite):
+            self.serial.setBaudRate(115200)
+        else:
+            raise IOError("Cannot connect to device: {}".format(self.serial.error()))
+
+    def disconnect(self):
+        if self.serial:
+            self.serial.close()
 
 
 class MuFileList(QListWidget):
