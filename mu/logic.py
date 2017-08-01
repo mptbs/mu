@@ -510,8 +510,9 @@ class Editor:
             # Call AMPY
             board = pyboard.Pyboard(port)
             board_files = files.Files(board)
-            with open(tab.path, 'rb') as infile:
-                board_files.put("main.py", infile.read())
+            # Save the program as main.py to make it load after a reset
+            #with open(tab.path, 'rb') as infile:
+            #    board_files.put("main.py", infile.read())
             board_files.run(tab.path, False)
             board.close()
             
