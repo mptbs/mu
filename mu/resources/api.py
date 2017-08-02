@@ -208,6 +208,7 @@ TBSENSE_APIS = [
     "tbsense.reset_module()\nTurn off power to all sensors on the board, including the RGB LEDs.",
     "tbsense.reinit_peripherals()\nReinitialize I2C0 and SPI0 (USART0) to a configuration suitable for using the sensors on the board.",
     "tbsense.delay(ms)\nDelay for the given number of milliseconds.",
+    "tbsense.deepsleep(s)\nDeepsleep for the given number of seconds to save power.",
     "tbsense.ms()\nReturn the number of milliseconds since the last board reset.\nThe returned result is a micropython smallint (31-bit signed number),\nso after 2^30 milliseconds (12.4 days) this number will become negative.",
     "tbsense.ms_elapsed(start)\nReturn the number of milliseconds since 'start'.\nThis function takes care of counter wrap and can be used to measure periods of up to 12.4 days.",
 #radio
