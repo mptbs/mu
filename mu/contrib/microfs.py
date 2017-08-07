@@ -47,7 +47,9 @@ def find_microbit():
     """
     ports = list_serial_ports()
     for port in ports:
-        if "VID:PID=0D28:0204" in port[2].upper():
+        # Modification from original microfs.py below:
+        if "VID:PID=1366" in port[2].upper():
+        # End modification above.
             return port[0]
     return None
 

@@ -511,8 +511,8 @@ class Editor:
             board = pyboard.Pyboard(port)
             board_files = files.Files(board)
             # Save the program as main.py to make it load after a reset
-            #with open(tab.path, 'rb') as infile:
-            #    board_files.put("main.py", infile.read())
+            # with open(tab.path, 'rb') as infile:
+               # board_files.put("main.py", infile.read())
             board_files.run(tab.path, False)
             board.close()
             

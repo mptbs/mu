@@ -1,6 +1,8 @@
 Mu - a "micro" editor
 =====================
 
+**This project is a fork of the original Mu editor project, with some customizations.**
+
 **This project works with Python 3 and the Qt UI library.**
 
 Currently, the latest builds for Windows, OSX and Linux x86 can be found here:

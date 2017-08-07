@@ -35,6 +35,8 @@ from PyQt5.QtSerialPort import QSerialPort
 from mu import __version__
 from mu.contrib import microfs
 from mu.resources import load_icon, load_stylesheet, load_font_data
+from mu.resources import pyboard
+from mu.resources import files
 
 #: The default font size.
 DEFAULT_FONT_SIZE = 14
@@ -542,10 +544,10 @@ class ButtonBar(QToolBar):
         self.addAction(name="save",
                        tool_text="Save the current MicroPython script.")
         self.addSeparator()
-        self.addAction(name="flash",
-                       tool_text="Flash your code onto the board.")
-        # self.addAction(name="files",
-                       # tool_text="Access the file system on the micro:bit.")
+        self.addAction(name="run",
+                       tool_text="Run your code!")
+        self.addAction(name="files",
+                       tool_text="Access the file system on the board.")
         self.addAction(name="repl",
                        tool_text="Use the REPL to live code.")
         self.addSeparator()
@@ -1267,7 +1269,12 @@ class LocalFileList(MuFileList):
                 try:
                     with microfs.get_serial() as serial:
                         logger.info(serial.port)
-                        microfs.get(serial, microbit_filename, local_filename)
+                        # microfs.get(serial, microbit_filename, local_filename)
+                        board = pyboard.Pyboard(serial.port)
+                        board_files = files.Files(board)
+                        fileBytes = board_files.get(microbit_filename)
+                        with open(local_filename, 'wb') as local:
+                            local.write(fileBytes)
                     super().dropEvent(event)
                 except Exception as ex:
                     logger.error(ex)
@@ -1292,7 +1299,7 @@ class FileSystemPane(QFrame):
         layout = QGridLayout()
         self.setLayout(layout)
         microbit_label = QLabel()
-        microbit_label.setText('Files on your micro:bit:')
+        microbit_label.setText('Files on your board:')
         local_label = QLabel()
         local_label.setText('Files on your computer:')
         self.microbit_label = microbit_label
