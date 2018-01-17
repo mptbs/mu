@@ -211,6 +211,8 @@ class EditorPane(QsciScintilla):
     def __init__(self, path, text, api=None):
         super().__init__()
         self.path = path
+        if platform.system() == 'Darwin':
+            self.setUtf8(True)
         self.setText(text)
         self.check_indicators = {  # IDs are arbitrary
             'error': {'id': 19, 'markers': {}},

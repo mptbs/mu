@@ -716,7 +716,7 @@ class Editor:
                 # No extension given, default to .py
                 tab.path += '.py'
             try:
-                with open_atomic(tab.path, 'w', newline='') as f:
+                with open_atomic(tab.path, 'w', encoding='utf-8', newline='') as f:
                     logger.info('Saving script to: {}'.format(tab.path))
                     logger.debug(tab.text())
                     f.write(tab.text())
