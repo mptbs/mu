@@ -406,7 +406,7 @@ class Editor:
         if passed_filename:
             self.direct_load(passed_filename)
         if not self._view.tab_count:
-            py = 'from microbit import *{}{}# Write your code here :-)'.format(
+            py = 'from tbsense import *{}{}# Write your code here :-)'.format(
                 os.linesep, os.linesep)
             self._view.add_tab(None, py)
         self._view.set_theme(self.theme)
@@ -481,7 +481,6 @@ class Editor:
 
 
     def run(self):
-
         tab = self._view.current_tab
         if tab.path is None:
             # Unsaved file.
@@ -566,17 +565,12 @@ class Editor:
         If the file system navigator is active enable it. Otherwise hide it.
         If the REPL is active, display a message.
         """
-        if self.repl is None:
-            if self.fs is None:
-                self.add_fs()
-            else:
-                self.remove_fs()
+        if self.repl is not None:
+            self.remove_repl()
+        if self.fs is None:
+            self.add_fs()
         else:
-            message = "File system and REPL cannot work at the same time."
-            information = ("The file system and REPL both use the same USB "
-                           "serial connection. Only one can be active "
-                           "at any time. Toggle the REPL off and try again.")
-            self._view.show_message(message, information)
+            self.remove_fs()
 
     def add_repl(self):
         """
@@ -617,6 +611,7 @@ class Editor:
         """
         if self.repl is None:
             raise RuntimeError("REPL not running")
+        self._view.disconnect_repl(self.repl)
         self._view.remove_repl()
         self.repl = None
 
@@ -624,18 +619,12 @@ class Editor:
         """
         If the REPL is active, close it; otherwise open the REPL.
         """
-        if self.fs is None:
-            if self.repl is None:
-                self.add_repl()
-            else:
-                self.remove_repl()
+        if self.fs is not None:
+            self.remove_fs()
+        if self.repl is None:
+            self.add_repl()
         else:
-            message = "REPL and file system cannot work at the same time."
-            information = ("The REPL and file system both use the same USB "
-                           "serial connection. Only one can be active "
-                           "at any time. Toggle the file system off and "
-                           "try again.")
-            self._view.show_message(message, information)
+            self.remove_repl()
 
     def toggle_theme(self):
         """
